@@ -118,38 +118,116 @@ cd metaquest_project
 
 ---
 
+### Step 8. UnityYAMLMerge (Smart Merge) 등록 ⚠️ **꼭 필요**
+
+`.gitattributes`에 Smart Merge 설정은 잡혀있는데, **각자 로컬에서 한 번** mergetool 경로를 git에 알려줘야 실제로 동작해. 안 해두면 씬/프리팹 충돌 시 자동 머지 안 되고 그냥 텍스트 충돌 뜸.
+
+**Mac:**
+```bash
+# Unity 버전은 본인이 설치한 버전에 맞게 수정 (예: 6000.0.30f1)
+git config --global merge.unityyamlmerge.name "Unity SmartMerge (UnityYAMLMerge)"
+git config --global merge.unityyamlmerge.driver '/Applications/Unity/Hub/Editor/<Unity버전>/Unity.app/Contents/Tools/UnityYAMLMerge merge -p %O %B %A %A'
+git config --global merge.unityyamlmerge.recursive binary
+```
+
+**Windows (PowerShell):**
+```powershell
+git config --global merge.unityyamlmerge.name "Unity SmartMerge (UnityYAMLMerge)"
+git config --global merge.unityyamlmerge.driver '"C:/Program Files/Unity/Hub/Editor/<Unity버전>/Editor/Data/Tools/UnityYAMLMerge.exe" merge -p %O %B %A %A'
+git config --global merge.unityyamlmerge.recursive binary
+```
+
+> `<Unity버전>` 자리는 본인이 깐 Unity 6 LTS 정확한 버전 이름으로 바꿔야 함. (예: `6000.0.30f1`) Unity Hub의 Installs 탭에서 확인.
+
+---
+
+### Step 9. Meta XR SDK 설치 (B 담당이면 필수, 나머지는 권장)
+
+Meta XR All-in-One SDK는 라이선스 동의가 필요해서 `manifest.json`에 미리 못 박아둘 수 없음. 각자 Unity Package Manager에서 직접 설치:
+
+1. Unity Editor 열기
+2. `Window → Package Manager`
+3. 좌상단 `+` 버튼 → `Add package by name...`
+4. 입력: `com.meta.xr.sdk.all` → Add
+5. (또는) Unity Asset Store에서 "Meta XR All-in-One SDK" 검색 → Import
+
+> 기본 Unity XR Interaction Toolkit / Oculus XR Plugin은 이미 `manifest.json`에 들어가 있어서 자동 설치돼. Meta XR SDK는 컨트롤러 햅틱, 손 추적 같은 고급 기능 쓸 때 필요.
+
+---
+
+## 👥 팀원별 작업 분담
+
+| 팀원 | 담당 영역 | 만드는 파일 | 테스트 씬 |
+|------|------|------|------|
+| **A** | 물리 / 성벽 | `WallBlock.cs`, 성벽 Prefab | `Test_A_Scene` |
+| **B** | VR 인터랙션 / 투사체 | `Projectile.cs`, `ExplosiveProjectile.cs`, 공 Prefab | `Test_B_Scene` |
+| **C** | 게임 매니저 / 가챠 | `GameManager.cs`, `GachaManager.cs` | `Test_C_Scene` |
+| **D** | UI / 최종 통합 | `UIManager.cs`, MainScene 관리 | `MainScene` |
+
+> A·B·C는 본인 Test 씬에서 작업하고 **스크립트 + 프리팹만** push. D가 MainScene에서 모두 통합.
+
+---
+
 ## 🌿 브랜치 전략
 
 ```
 main
- ├ feature/wall-destruction   ← 성벽 파괴 시스템
- ├ feature/projectile         ← 발사체 / 투척 메커니즘
- ├ feature/ui                 ← UI
- └ feature/scene-setup        ← 씬 구성
+ ├ feature/A-wall-physics       ← 팀원 A: 성벽 물리 시스템
+ ├ feature/B-projectile         ← 팀원 B: VR 인터랙션 / 투사체
+ ├ feature/C-managers           ← 팀원 C: GameManager / GachaManager
+ └ feature/D-ui-integration     ← 팀원 D: UI / 최종 통합
 ```
 
 **규칙:**
-- `main`은 항상 빌드 가능한 상태로 유지
+- `main`은 항상 빌드 가능한 상태로 유지 (직접 push 금지, PR만)
 - 작업은 반드시 `feature/...` 브랜치에서
 - 완료되면 PR(Pull Request) 올려서 코드 리뷰 후 merge
+- 작업 단위가 크면 `feature/A-wall-physics-hp-system` 처럼 세부 이름 붙여도 OK
 
 **브랜치 만들기:**
 ```bash
-git checkout -b feature/내작업이름
+git checkout -b feature/A-내작업이름
 ```
 
 ---
 
 ## 📁 씬(Scene) 분리 규칙
 
-같은 Scene을 두 명이 동시에 수정하면 **머지 지옥** 시작됨. 그래서 Additive로 분리:
+같은 Scene을 두 명이 동시에 수정하면 **머지 지옥** 시작됨. 그래서 1인 1씬으로 분리:
 
-| 씬 | 담당 영역 |
-|------|------|
-| `MainScene` | 진입점 |
-| `GameplayScene` | 성벽 / 발사체 / 게임 로직 |
-| `UIScene` | UI 전용 |
-| `LightingScene` | 조명 / 환경 |
+| 씬 | 담당 | 용도 |
+|------|------|------|
+| `MainScene` | **D 전용** | 최종 통합. A·B·C는 절대 건드리지 말 것 |
+| `Test_A_Scene` | A | 성벽 물리 테스트 |
+| `Test_B_Scene` | B | VR 투사체 / 인터랙션 테스트 |
+| `Test_C_Scene` | C | GameManager / Gacha 로직 테스트 |
+
+> ⚠️ MainScene은 `CODEOWNERS`로 D 승인 없이는 머지 못 하게 보호돼 있음. 실수로라도 수정하지 말기.
+
+---
+
+## 📂 폴더 구조
+
+```
+Assets/
+├── Scenes/         (MainScene + Test_A/B/C_Scene)
+├── Scripts/
+│   ├── Physics/    (WallBlock.cs 등 — A)
+│   ├── Projectiles/(Projectile.cs 등 — B)
+│   ├── Managers/   (GameManager.cs, GachaManager.cs — C)
+│   └── UI/         (UIManager.cs — D)
+├── Prefabs/
+│   ├── Walls/      (성벽 블록 — A)
+│   └── Projectiles/(공/폭탄 등 — B)
+├── Materials/
+│   └── Physics/    (나무/돌 Physic Material — A)
+├── Audio/
+│   ├── SFX/        (효과음 — 3번 담당이 채움)
+│   └── BGM/        (배경음 — 3번 담당이 채움)
+└── Models/         (Meshy로 뽑은 3D 모델)
+```
+
+> 빈 폴더에 `.gitkeep`이 들어있는데, 실제 파일이 들어가면 지워도 됨.
 
 ---
 
@@ -238,9 +316,17 @@ git lfs pull
 
 ---
 
-## 👥 팀원
+## 👥 팀원 명단
 
-- (각자 이름 / GitHub 아이디 / 담당 영역 채우기)
+| 이름 | GitHub 아이디 | 담당 |
+|------|------|------|
+| (이름) | @아이디 | A — 물리 / 성벽 |
+| (이름) | @아이디 | B — VR 인터랙션 / 투사체 |
+| (이름) | @아이디 | C — 게임 매니저 / 가챠 |
+| (이름) | @아이디 | D — UI / 최종 통합 |
+| hyemin | @hyemin-hub | 협업 인프라 (GitHub 세팅) |
+
+> 채우고 나면 `.github/CODEOWNERS`에 있는 `@팀원X-깃허브아이디` 자리도 실제 아이디로 바꿔주기.
 
 ---
 
