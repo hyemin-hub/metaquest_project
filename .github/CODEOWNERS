@@ -1,0 +1,27 @@
+# =============================================================
+# CODEOWNERS — MetaQuest Project
+# =============================================================
+# 이 파일에 명시된 경로의 변경사항은 지정된 owner의 리뷰가 있어야
+# main에 머지될 수 있어 (단, GitHub Settings → Branches에서
+# "Require review from Code Owners" 옵션을 켜야 동작함).
+# =============================================================
+
+# ----- MainScene은 팀원 D만 머지 가능 (통합 담당) -----
+/Assets/Scenes/MainScene.unity          @팀원D-깃허브아이디
+/Assets/Scenes/MainScene.unity.meta     @팀원D-깃허브아이디
+
+# ----- 영역별 owner (선택: 같은 영역 PR은 담당자 리뷰 자동 요청) -----
+/Assets/Scripts/Physics/                @팀원A-깃허브아이디
+/Assets/Scripts/Projectiles/            @팀원B-깃허브아이디
+/Assets/Scripts/Managers/               @팀원C-깃허브아이디
+/Assets/Scripts/UI/                     @팀원D-깃허브아이디
+
+/Assets/Prefabs/Walls/                  @팀원A-깃허브아이디
+/Assets/Prefabs/Projectiles/            @팀원B-깃허브아이디
+
+# ----- 협업 인프라 (GitHub 세팅 / .gitignore / .gitattributes / README) -----
+/.github/                               @hyemin-hub
+/.gitignore                             @hyemin-hub
+/.gitattributes                         @hyemin-hub
+/README.md                              @hyemin-hub
+/Packages/manifest.json                 @hyemin-hub
