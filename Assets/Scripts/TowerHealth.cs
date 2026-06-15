@@ -4,9 +4,12 @@ public class TowerHealth : MonoBehaviour
 {
     public float hp = 100f;
 
-    public Rigidbody[] cubes;
-
     bool collapsed = false;
+
+    public float explosionForce = 300f;
+    public float explosionRadius = 5f;
+    public float upwardModifier = 0.5f;
+    public float torque = 50f;
 
     public void TakeDamage(float damage)
     {
@@ -26,15 +29,17 @@ public class TowerHealth : MonoBehaviour
     {
         collapsed = true;
 
-        transform.DetachChildren();
+        // 🔥 자동 수집 (CubeManager랑 동일 방식)
+        Rigidbody[] cubes = GetComponentsInChildren<Rigidbody>();
 
         foreach (Rigidbody rb in cubes)
         {
             rb.isKinematic = false;
             rb.useGravity = true;
-
-            rb.AddExplosionForce(300f, transform.position, 5f);
-            rb.AddTorque(Random.insideUnitSphere * 50f, ForceMode.Impulse);
+            rb.AddExplosionForce(explosionForce, transform.position, explosionRadius);
+            rb.AddTorque(Random.insideUnitSphere * torque, ForceMode.Impulse);
         }
+
+        transform.DetachChildren();
     }
 }
