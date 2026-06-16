@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "com.meta.xr.sdk.core": "203.0.0",
+    "com.meta.xr.sdk.interaction.ovr": "203.0.0",
     "com.unity.ai.navigation": "2.0.11",
     "com.unity.cloud.gltfast": "6.19.0",
     "com.unity.collab-proxy": "2.11.4",
@@ -14,7 +16,6 @@
     "com.unity.visualscripting": "1.9.10",
     "com.unity.xr.interaction.toolkit": "3.0.7",
     "com.unity.xr.management": "4.5.0",
-    "com.unity.xr.oculus": "4.4.0",
     "com.unity.xr.openxr": "1.13.0",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.adaptiveperformance": "1.0.0",
