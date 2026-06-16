@@ -10,27 +10,33 @@ public class DebugInputDisplay : MonoBehaviour
 {
     public TMP_Text displayText;
 
-    [Header("카메라 따라가기 (항상 보이게)")]
-    public bool followCamera = true;
-    public Vector3 cameraOffset = new Vector3(-0.5f, 0.2f, 1.2f);
+    [Header("카메라 자식으로 부착")]
+    public bool attachToCamera = true;
+    public Vector3 localOffset = new Vector3(-0.25f, 0.15f, 0.6f);
+    public float localScale = 0.0015f;
 
-    void LateUpdate()
+    private bool attached = false;
+
+    void Update()
     {
-        // 카메라 좌측 상단에 항상 보이게
-        if (followCamera)
+        // 카메라에 자식으로 부착 (매 프레임 확인 — 한번 부착되면 자동 따라감)
+        if (attachToCamera && !attached)
         {
             Camera cam = Camera.main;
             if (cam != null)
             {
-                Vector3 targetPos = cam.transform.position
-                    + cam.transform.right * cameraOffset.x
-                    + cam.transform.up * cameraOffset.y
-                    + cam.transform.forward * cameraOffset.z;
-                transform.position = targetPos;
-                transform.rotation = cam.transform.rotation;
+                transform.SetParent(cam.transform);
+                transform.localPosition = localOffset;
+                transform.localRotation = Quaternion.identity;
+                transform.localScale = Vector3.one * localScale;
+                attached = true;
+                Debug.Log($"[DebugInputDisplay] 카메라({cam.name})에 부착됨");
             }
         }
+    }
 
+    void LateUpdate()
+    {
         if (displayText == null) return;
 
         string s = "<color=#ffd23b>=== INPUT DEBUG ===</color>\n";

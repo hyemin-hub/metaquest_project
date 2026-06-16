@@ -24,7 +24,7 @@ using TMPro;
 public static class DemoSceneSetup
 {
     // 사용자가 설정한 Camera Rig transform 전체 보존용
-    static Vector3 savedRigScale = Vector3.one;
+    static Vector3 savedRigScale = Vector3.one * 32f; // 기본 32 (사용자 설정)
     static Vector3 savedRigPosition = Vector3.zero;
     static Quaternion savedRigRotation = Quaternion.identity;
     static bool hasUserRigTransform = false;
@@ -422,7 +422,7 @@ public static class DemoSceneSetup
         spawner.spawnOnStart = false; // 자동 spawn 끔
         spawner.spawnPosition = playerPos + lookAtTower * new Vector3(0.4f, 1.5f, 1.5f);
         spawner.throwForce = 38f;
-        spawner.weaponScaleMultiplier = 15f; // scale 25 환경에 맞춰 키움 (3 → 15)
+        spawner.weaponScaleMultiplier = 20f; // 사용자 설정값
         spawner.autoRespawnDelay = 1.2f;
 
         // 에디터 카메라 — 플레이어 위치에서 성벽 방향
@@ -444,9 +444,12 @@ public static class DemoSceneSetup
             {
                 // 새로 만들 때만 위치/스케일 적용
                 var parentGO = new GameObject("Demo_Rig_Parent");
+                // Camera Rig의 현재 localPosition/Rotation 저장 (사용자가 설정한 것)
+                Vector3 rigLocalPos = ovrRig.transform.localPosition;
+                Quaternion rigLocalRot = ovrRig.transform.localRotation;
+
                 if (hasUserRigTransform)
                 {
-                    // 사용자가 이전에 설정한 위치/회전/스케일 그대로 복원
                     parentGO.transform.position = savedRigPosition;
                     parentGO.transform.rotation = savedRigRotation;
                     parentGO.transform.localScale = savedRigScale;
@@ -454,20 +457,20 @@ public static class DemoSceneSetup
                 }
                 else
                 {
-                    // 첫 호출만 자동 위치 사용
                     parentGO.transform.position = playerPos;
                     parentGO.transform.rotation = lookAtTower;
                     parentGO.transform.localScale = savedRigScale;
                     Debug.Log($"[SetupWeaponOnly] Demo_Rig_Parent 첫 생성: pos={parentGO.transform.position}");
                 }
                 ovrRig.transform.SetParent(parentGO.transform);
-                ovrRig.transform.localPosition = Vector3.zero;
-                ovrRig.transform.localRotation = Quaternion.identity;
+                // ⚠️ 사용자가 Camera Rig에 직접 설정한 위치/회전 그대로 유지 — Vector3.zero로 덮어쓰지 X
+                ovrRig.transform.localPosition = rigLocalPos;
+                ovrRig.transform.localRotation = rigLocalRot;
             }
             else
             {
-                // 이미 있음 — 사용자가 잡은 위치/회전/스케일 모두 그대로 둠
-                Debug.Log($"[SetupWeaponOnly] Demo_Rig_Parent 그대로 유지 (사용자 위치 보존)");
+                // 이미 있음 — 모든 transform 그대로 유지
+                Debug.Log($"[SetupWeaponOnly] Demo_Rig_Parent + Camera Rig 그대로 유지 (사용자 설정 보존)");
             }
         }
 
@@ -486,8 +489,7 @@ public static class DemoSceneSetup
         // === 6) Inventory UI 자동 셋업 (D팀원 시스템 활용) ===
         BuildInventoryUI(playerPos, lookAtTower);
 
-        // === 7) 디버그 입력 패널 (VR에서 컨트롤러 입력 진단용) ===
-        BuildDebugInputPanel(playerPos, lookAtTower);
+        // 디버그 패널 — 시연 끝나면 안 만듦 (필요 시 BuildDebugInputPanel 호출)
 
         EditorUtility.DisplayDialog(
             "✅ 무기 시스템 추가 완료!",

@@ -37,12 +37,35 @@ public class ExplosiveProjectile : Projectile
         Collider[] hits = Physics.OverlapSphere(explosionPos, explosionRadius);
 
         int hitBlocks = 0;
-        // TowerHealth 중복 데미지 방지 (한 폭발에 같은 타워에 여러 번 들어가지 않게)
+        // 부모/매니저 중복 데미지 방지
         var towerSet = new System.Collections.Generic.HashSet<TowerHealth>();
+        var mgrSet = new System.Collections.Generic.HashSet<CubeManager>();
 
         foreach (Collider hit in hits)
         {
-            // 1. SimpleHealthBlock (B 시연용)
+            // 1. CubeDamage (개별 큐브)
+            var cube = hit.GetComponent<CubeDamage>();
+            if (cube != null)
+            {
+                cube.TakeDamage(damage);
+                hitBlocks++;
+            }
+
+            // 2. TowerHealth (부모 Wall, 중복 방지)
+            var tower = hit.GetComponentInParent<TowerHealth>();
+            if (tower != null && towerSet.Add(tower))
+            {
+                tower.TakeDamage(damage);
+            }
+
+            // 3. CubeManager (부모 Wall, 중복 방지)
+            var mgr = hit.GetComponentInParent<CubeManager>();
+            if (mgr != null && mgrSet.Add(mgr))
+            {
+                mgr.TakeDamage(damage);
+            }
+
+            // 4. SimpleHealthBlock (시연용)
             var block = hit.GetComponent<SimpleHealthBlock>();
             if (block != null)
             {
@@ -50,15 +73,7 @@ public class ExplosiveProjectile : Projectile
                 hitBlocks++;
             }
 
-            // 2. TowerHealth (A 본 시스템) — 부모에서 찾음, 중복 방지
-            var tower = hit.GetComponentInParent<TowerHealth>();
-            if (tower != null && towerSet.Add(tower))
-            {
-                tower.TakeDamage(damage);
-                hitBlocks++;
-            }
-
-            // 3. 폭발력 부여
+            // 5. 폭발력 부여
             Rigidbody hitRb = hit.GetComponent<Rigidbody>();
             if (hitRb != null && !hitRb.isKinematic)
             {

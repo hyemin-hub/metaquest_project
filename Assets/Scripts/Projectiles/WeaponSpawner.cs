@@ -25,8 +25,10 @@ public class WeaponSpawner : MonoBehaviour
 
     [Header("총처럼 - 트리거 누르면 생성+자동발사")]
     public bool gunMode = true;
-    public float gunModeThrowForce = 200f; // scale 25 환경 — 강하게
-    public Vector3 gunModeAngleBoost = new Vector3(0, 0.15f, 0);
+    public float gunModeThrowForce = 800f; // scale 32 환경 — 매우 강하게
+    public Vector3 gunModeAngleBoost = new Vector3(0, 0.05f, 0);
+    [Tooltip("중력 무시하고 직선으로 날아가게 (성벽까지 곧장)")]
+    public bool gunModeNoGravity = true;
 
     [Header("발사 설정")]
     public Vector3 throwDirection = new Vector3(0, 0.5f, 1);
@@ -38,7 +40,7 @@ public class WeaponSpawner : MonoBehaviour
 
     [Header("공 크기 배율 (카메라 scale에 맞게 조정)")]
     [Tooltip("prefab 사용 시 원본 scale에 이 값 곱함")]
-    public float weaponScaleMultiplier = 3f;
+    public float weaponScaleMultiplier = 20f;
 
     [Header("무기 자동 정리 (0이면 끔)")]
     [Tooltip("이 거리(m) 이상 멀어지면 destroy. scale 25 환경에선 500 이상 권장")]
@@ -129,35 +131,100 @@ public class WeaponSpawner : MonoBehaviour
     // 총 모드 — 무기 생성 + 카메라 방향으로 즉시 발사
     public void SpawnAndShoot()
     {
-        SpawnInternal(); // gunMode 체크 우회
+        SpawnInternal();
         if (currentProjectile == null) return;
 
-        var rb = currentProjectile.GetComponent<Rigidbody>();
-        if (rb == null) return;
+        var bullet = currentProjectile;
 
-        // Grab 컴포넌트 비활성화 (잡힐 일 없음)
-        foreach (var comp in currentProjectile.GetComponents<MonoBehaviour>())
+        // ⭐ 강제 부모 분리
+        bullet.transform.SetParent(null, true);
+
+        // Grab/Hand/Pose/Interact 관련 모든 컴포넌트 비활성화
+        DisableInteractionComponents(bullet);
+
+        // 자식 GameObject들 안의 Grab 컴포넌트도 비활성화
+        foreach (var t in bullet.GetComponentsInChildren<Transform>())
         {
-            if (comp == null) continue;
-            string name = comp.GetType().Name;
-            if (name.Contains("Grab") || name.Contains("Hand") || name.Contains("Pose") || name.Contains("Interact"))
-            {
-                comp.enabled = false;
-            }
+            if (t == bullet.transform) continue;
+            DisableInteractionComponents(t.gameObject);
         }
 
+        // 모든 Collider isTrigger 끄기 (충돌 잡히게)
+        foreach (var col in bullet.GetComponentsInChildren<Collider>())
+        {
+            if (col != null) col.isTrigger = false;
+        }
+
+        // ⭐ bullet 본체에 SphereCollider 강제 추가 (충돌 무조건 잡히게)
+        if (bullet.GetComponent<Collider>() == null)
+        {
+            var sc = bullet.AddComponent<SphereCollider>();
+            sc.radius = 0.5f; // 큰 반경으로 확실히 잡힘
+            sc.isTrigger = false;
+            Debug.Log("[WeaponSpawner] SphereCollider 강제 추가");
+        }
+
+        // ⭐ Projectile 컴포넌트 강제 보장 (없으면 추가)
+        if (bullet.GetComponent<Projectile>() == null)
+        {
+            var p = bullet.AddComponent<Projectile>();
+            p.damage = 150f;
+            p.destroyOnHit = false;
+        }
+
+        // ⭐ Raycast 충돌 감지 (무기 빠를 때 통과 방지)
+        if (bullet.GetComponent<ProjectileRaycastDamage>() == null)
+        {
+            var rd = bullet.AddComponent<ProjectileRaycastDamage>();
+            rd.damage = 150f;
+            rd.radius = 1f; // 큰 반경으로 확실히 잡힘
+        }
+
+        var rb = bullet.GetComponent<Rigidbody>();
+        if (rb == null) rb = bullet.AddComponent<Rigidbody>();
+
         rb.isKinematic = false;
-        rb.useGravity = true;
+        rb.useGravity = !gunModeNoGravity; // gunMode면 중력 무시
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        // ⭐ Drag/공기저항 강제 0
+        rb.linearDamping = 0f;
+        rb.angularDamping = 0.05f;
+        rb.mass = 1f;
+
+        // ⭐ Constraint도 다 풀기 (회전/이동 제약 X)
+        rb.constraints = RigidbodyConstraints.None;
 
         Camera cam = Camera.main;
         Vector3 dir = cam != null ? cam.transform.forward + gunModeAngleBoost : transform.forward + gunModeAngleBoost;
         rb.linearVelocity = dir.normalized * gunModeThrowForce;
         rb.angularVelocity = Random.insideUnitSphere * 5f;
 
+        // ⭐ ProjectileFreedom 추가 — 매 프레임 강제 보장
+        if (bullet.GetComponent<ProjectileFreedom>() == null)
+        {
+            bullet.AddComponent<ProjectileFreedom>();
+        }
+
         Debug.Log($"[WeaponSpawner] 총 발사! 속도: {gunModeThrowForce}, 방향: {dir.normalized}");
 
         // 발사된 무기는 currentProjectile에서 분리 (새 무기 또 생성 가능하게)
         currentProjectile = null;
+    }
+
+    void DisableInteractionComponents(GameObject go)
+    {
+        foreach (var comp in go.GetComponents<MonoBehaviour>())
+        {
+            if (comp == null) continue;
+            string name = comp.GetType().Name;
+            if (name.Contains("Grab") || name.Contains("Hand") ||
+                name.Contains("Pose") || name.Contains("Interact") ||
+                name.Contains("Pointable") || name.Contains("Snap"))
+            {
+                comp.enabled = false;
+            }
+        }
     }
 
     public void Spawn()
@@ -201,12 +268,18 @@ public class WeaponSpawner : MonoBehaviour
         {
             // Building Block의 Grab 컴포넌트 다 살아있는 prefab/씬오브젝트 사용
             go = Instantiate(grabbableBasePrefab, spawnPosition, Quaternion.identity);
-            go.SetActive(true); // 원본이 비활성화돼있어도 사본은 활성화
+            go.SetActive(true);
 
-            // 크기 배율 적용 (카메라 스케일 25 같은 거에 맞춰 공 크게)
+            // ⭐ 부모 분리 — 각 무기가 독립적으로 움직이게
+            go.transform.SetParent(null, true);
+
+            // 크기 배율 적용 — prefab의 원본 scale * 배율 (무기마다 다른 크기 가능)
             if (weaponScaleMultiplier > 0.01f && weaponScaleMultiplier != 1f)
             {
-                go.transform.localScale *= weaponScaleMultiplier;
+                Vector3 prefabScale = grabbableBasePrefab.transform.localScale;
+                // prefab scale이 (0,0,0)이면 fallback (1,1,1) 사용
+                if (prefabScale.sqrMagnitude < 0.001f) prefabScale = Vector3.one;
+                go.transform.localScale = prefabScale * weaponScaleMultiplier;
             }
         }
         else
